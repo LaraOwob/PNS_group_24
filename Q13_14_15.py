@@ -6,6 +6,7 @@ import numpy as np
 
 def traffic_policing(jobs, leak_rate,burst_rate,dt):
     conforming_intervals = []
+    non_conforming_intervals = []
     all_jobs_bit_data = []
     for j in jobs:
         job_bit_data = {}        
@@ -15,13 +16,15 @@ def traffic_policing(jobs, leak_rate,burst_rate,dt):
             water_volume = excess * abs(j["start"] - t)
             if water_volume >= burst_rate:
                 job_bit_data[t] = burst_rate
-                end_conform = t
                 
             else:
                 job_bit_data[t] = water_volume
+                end_conform = t + dt
+                start_non_conform = t + dt
         conforming_intervals.append((j["start"],end_conform))
+        non_conforming_intervals.append((start_non_conform, j["end"]))
         all_jobs_bit_data.append(job_bit_data)
-    return conforming_intervals, all_jobs_bit_data
+    return conforming_intervals, non_conforming_intervals, all_jobs_bit_data
         
         
     
@@ -64,24 +67,32 @@ def makeGraph(data,title,axes):
         
         
 
-def policing_graph(data, intervals):
+def policing_graph(data, con_intervals,non_con_intervals):
     fig, ax = plt.subplots()
     set_line_objects   = []
     for job_data in data:
         times = list(job_data.keys())
         values = list(job_data.values())
-        line_obj, = ax.plot(times, values, label='Job Bitrate')
-        set_line_objects.append(line_obj)
+        ax.plot(times, values, label='Job Bitrate')
     
     # Fill conforming intervals
     
-    for start, end in intervals:
+    for start, end in con_intervals:
         k = 0 
         for job_data in data:
             times = np.array(list(job_data.keys()))
             values = np.array(list(job_data.values()))
             mask = (times >= start) & (times <= end)
-            ax.fill_between(times[mask], 0, values[mask], alpha=0.3,  color=set_line_objects[k].get_color())
+            ax.fill_between(times[mask], 0, values[mask], alpha=0.3,  color='blue')
+            k += 1
+            
+    for start, end in non_con_intervals:
+        k = 0 
+        for job_data in data:
+            times = np.array(list(job_data.keys()))
+            values = np.array(list(job_data.values()))
+            mask = (times >= start) & (times <= end)
+            ax.fill_between(times[mask], 0, values[mask], alpha=0.3,  color='red')
             k += 1
     
     ax.set_xlabel("Time")
@@ -109,9 +120,9 @@ def main():
     #Question 14
     #makeGraph(bit_data,"Bitrate ","Bitrate (Mbit/s)")
     #Question 15
-    conforming_intervals, policing_bit_data = traffic_policing(jobs, leak_rate,burst_tolerance,dt)
+    conforming_intervals, non_conforming_intervals,policing_bit_data = traffic_policing(jobs, leak_rate,burst_tolerance,dt)
     print("Conforming Intervals:",conforming_intervals)
-    policing_graph(policing_bit_data,conforming_intervals)
+    policing_graph(policing_bit_data,conforming_intervals,non_conforming_intervals)
     
 if __name__ == "__main__":
     main()
